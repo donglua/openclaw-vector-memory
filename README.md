@@ -81,15 +81,26 @@ python main.py --count
 
 ## 集成到 OpenClaw
 
+本项目提供了一键安装脚本，能直接把 `memory` 模块、依赖和 `.env` 配置注入到你的 OpenClaw 项目中：
+
+```bash
+# 假设你的 OpenClaw 项目路径是 ~/workspace/openclaw
+./install.sh ~/workspace/openclaw
+```
+
+安装完成后，进入你的 OpenClaw 目录，执行 `pip install -r requirements.txt`，并在 `.env` 里配置 Zilliz 密钥。
+
+在 OpenClaw 源码里（如 `agent.py`），直接这样用：
+
 ```python
 from memory import MemoryStore
 
 store = MemoryStore()
 
-# 写入记忆
+# 替换原来的追加文件逻辑
 store.save("用户今天询问了 Python 异步编程的问题")
 
-# 替换原来读 MEMORY.md 的逻辑，直接生成 Prompt 片段
+# 替换原来读取 MEMORY.md 的逻辑，获取 Top-K 记忆并拼入 Prompt
 context = store.build_prompt_context(user_input)
 prompt = f"{context}\n\n用户：{user_input}"
 ```
