@@ -32,13 +32,31 @@ EMBEDDING_PROVIDER=local
 首次运行自动下载模型（约 2GB），之后离线可用。
 
 **用远程 API（硅基流动 / OpenAI / 任意兼容接口）：**
+
+完整 `.env` 示例（以硅基流动为例）：
 ```bash
+# Zilliz Cloud
+ZILLIZ_URI=https://your-cluster-id.api.gcp-us-west1.zillizcloud.com
+ZILLIZ_TOKEN=your_token_here
+COLLECTION_NAME=openclaw_memories
+
+# 远程 Embedding API
 EMBEDDING_PROVIDER=remote
 EMBEDDING_API_BASE=https://api.siliconflow.cn/v1
 EMBEDDING_API_KEY=sk-xxx
 EMBEDDING_MODEL=BAAI/bge-m3
 EMBEDDING_DIM=1024
 ```
+
+常见服务配置对照：
+
+| 服务 | `EMBEDDING_API_BASE` | `EMBEDDING_MODEL` | `EMBEDDING_DIM` |
+|------|---------------------|------------------|----------------|
+| 硅基流动 | `https://api.siliconflow.cn/v1` | `BAAI/bge-m3` | `1024` |
+| OpenAI | `https://api.openai.com/v1` | `text-embedding-3-small` | `1536` |
+| Ollama（本地服务） | `http://localhost:11434/v1` | `nomic-embed-text` | `768` |
+
+> 远程 API 仅返回 Dense 向量，自动降级为语义搜索（无 Sparse），对个人记忆场景影响不大。
 
 ### 3. 测试
 
