@@ -13,7 +13,7 @@
 ### 1. 安装依赖
 
 ```bash
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 
 ### 2. 配置
@@ -60,23 +60,23 @@ EMBEDDING_DIM=1024
 ### 3. 测试
 
 ```bash
-python main.py --test
+python3 main.py --test
 ```
 
 ## CLI 用法
 
 ```bash
 # 写入一条记忆
-python main.py --save "用户喜欢用 Python，讨厌 Java"
+python3 main.py --save "用户喜欢用 Python，讨厌 Java"
 
 # 语义搜索
-python main.py --search "这个用户有什么编程习惯"
+python3 main.py --search "这个用户有什么编程习惯"
 
 # 从 MEMORY.md 迁移已有记忆
-python main.py --migrate /path/to/MEMORY.md
+python3 main.py --migrate /path/to/MEMORY.md
 
 # 查看记忆总条数
-python main.py --count
+python3 main.py --count
 ```
 
 ## 集成到 OpenClaw
@@ -88,22 +88,18 @@ python main.py --count
 ./install.sh ~/workspace/openclaw
 ```
 
-安装完成后，进入你的 OpenClaw 目录，执行 `pip install -r requirements.txt`，并在 `.env` 里配置 Zilliz 密钥。
+在安装最后一步，脚本会自动在目标目录的 `AGENTS.md` 中追加下面这段控制指令，引导你的主 Agent 自动使用：
 
-在 OpenClaw 源码里（如 `agent.py`），直接这样用：
-
-```python
-from memory import MemoryStore
-
-store = MemoryStore()
-
-# 替换原来的追加文件逻辑
-store.save("用户今天询问了 Python 异步编程的问题")
-
-# 替换原来读取 MEMORY.md 的逻辑，获取 Top-K 记忆并拼入 Prompt
-context = store.build_prompt_context(user_input)
-prompt = f"{context}\n\n用户：{user_input}"
+```markdown
+# 🧠 长期向量记忆库 (自动注入)
+**核心指令**：不要直接读取或写入传统的 `MEMORY.md` 文件。对于用户的偏好、长期记忆、以及背景上下文，请使用以下向量搜索工具：
+1. **检索记忆**：当你需要回忆关于用户的信息时，使用终端执行：
+   `python3 vector_memory.py --search "你要检索的关键语义"`
+2. **保存记忆**：当用户告知你全新的偏好或长期有效的事实，使用终端执行：
+   `python3 vector_memory.py --save "清晰且完整的记忆内容"`
 ```
+
+以后你的 Agent 会自动通过执行脚本来调取或覆盖长篇大论的旧记忆！
 
 ## 项目结构
 
