@@ -1,13 +1,12 @@
 # openclaw-vector-memory
 
-> OpenClaw 记忆系统增强版：BGE-M3 + Zilliz Cloud 向量搜索，支持本地与远程 Embedding API。
+> OpenClaw 记忆系统增强版：基于 Zilliz Cloud 的向量搜索，支持本地与远程 Embedding API。
 
 ## 特性
 
-- **混合搜索**：本地 BGE-M3 同时输出 Dense（语义）+ Sparse（关键词）向量，RRF 融合排序
-- **中文友好**：BGE-M3 对中文有专项优化
-- **灵活后端**：本地模型或任意 OpenAI 兼容 API，`.env` 一行切换
-- **云端持久化**：Zilliz Cloud 免费层存储，多端同步
+- **灵活后端**：支持任意 OpenAI 兼容的远程 API（硅基流动、OpenAI等），或本地模型（如 BGE-M3）
+- **混合搜索**：若使用本地 BGE-M3，可同时输出 Dense（语义）+ Sparse（关键词）向量，实现 RRF 融合排序
+- **云端持久化**：Zilliz Cloud 免费层存储，多端同步，开箱即用
 
 ## 快速开始
 
@@ -25,11 +24,11 @@ cp .env.example .env
 
 编辑 `.env`，填入 Zilliz Cloud 的 URI 和 Token，以及 Embedding 后端配置。
 
-**用本地 BGE-M3（默认，推荐）：**
+**用本地模型（默认 BGE-M3，支持混合搜索）：**
 ```bash
 EMBEDDING_PROVIDER=local
 ```
-首次运行自动下载模型（约 2GB），之后离线可用。
+首次运行自动下载模型（约 2GB），之后离线可用，原生支持 Dense+Sparse 双路召回。
 
 **用远程 API（硅基流动 / OpenAI / 任意兼容接口）：**
 
