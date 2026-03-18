@@ -16,12 +16,9 @@ from pymilvus import (
     AnnSearchRequest,
     RRFRanker,
 )
-from .embedder import Embedder
+from .embedder import Embedder, get_dense_dim
 
 load_dotenv()
-
-# 向量维度常量
-DENSE_DIM = 1024  # BGE-M3 dense 向量维度
 
 
 class MemoryStore:
@@ -53,7 +50,7 @@ class MemoryStore:
         """创建双向量 Collection（dense + sparse）"""
         schema = self._client.create_schema(auto_id=True, enable_dynamic_field=True)
         schema.add_field("id", DataType.INT64, is_primary=True)
-        schema.add_field("dense_vector", DataType.FLOAT_VECTOR, dim=DENSE_DIM)
+        schema.add_field("dense_vector", DataType.FLOAT_VECTOR, dim=get_dense_dim())
         schema.add_field("sparse_vector", DataType.SPARSE_FLOAT_VECTOR)
         schema.add_field("text", DataType.VARCHAR, max_length=4096)
         schema.add_field("source", DataType.VARCHAR, max_length=256)
@@ -119,37 +116,46 @@ class MemoryStore:
 
     def search(self, query: str, top_k: int = 5) -> list[dict]:
         """
-        混合搜索：Dense（语义）+ Sparse（关键词）经 RRF 融合排序
-
-        返回 list of dict，每条含 text / source / score
+        搜索记忆：
+        - 本地 BGE-M3：Dense + Sparse 混合搜索（RRF 融合）
+        - 远程 API：仅 Dense 语义搜索（API 不返回 sparse 向量）
         """
         dense_q, sparse_q = self._embedder.embed(query)
 
-        # Dense 语义检索请求
-        dense_req = AnnSearchRequest(
-            data=[dense_q],
-            anns_field="dense_vector",
-            param={"metric_type": "COSINE", "nprobe": 10},
-            limit=top_k,
-        )
-        # Sparse 关键词检索请求
-        sparse_req = AnnSearchRequest(
-            data=[sparse_q],
-            anns_field="sparse_vector",
-            param={"metric_type": "IP"},
-            limit=top_k,
-        )
-
-        results = self._client.hybrid_search(
-            collection_name=self._col,
-            reqs=[dense_req, sparse_req],
-            ranker=RRFRanker(),
-            limit=top_k,
-            output_fields=["text", "source", "created_at"],
-        )
+        if sparse_q:  # 有 sparse 向量 → 混合搜索
+            dense_req = AnnSearchRequest(
+                data=[dense_q],
+                anns_field="dense_vector",
+                param={"metric_type": "COSINE", "nprobe": 10},
+                limit=top_k,
+            )
+            sparse_req = AnnSearchRequest(
+                data=[sparse_q],
+                anns_field="sparse_vector",
+                param={"metric_type": "IP"},
+                limit=top_k,
+            )
+            results = self._client.hybrid_search(
+                collection_name=self._col,
+                reqs=[dense_req, sparse_req],
+                ranker=RRFRanker(),
+                limit=top_k,
+                output_fields=["text", "source", "created_at"],
+            )
+            hits_raw = results[0]
+        else:  # 无 sparse → 纯 dense 搜索
+            results = self._client.search(
+                collection_name=self._col,
+                data=[dense_q],
+                anns_field="dense_vector",
+                search_params={"metric_type": "COSINE", "nprobe": 10},
+                limit=top_k,
+                output_fields=["text", "source", "created_at"],
+            )
+            hits_raw = results[0]
 
         hits = []
-        for r in results[0]:
+        for r in hits_raw:
             hits.append({
                 "text": r["entity"]["text"],
                 "source": r["entity"].get("source", ""),
