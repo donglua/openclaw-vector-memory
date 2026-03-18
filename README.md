@@ -1,4 +1,4 @@
-# openclaw-bge-memory
+# openclaw-vector-memory
 
 > OpenClaw 记忆系统增强版：BGE-M3 + Zilliz Cloud 向量搜索，支持本地与远程 Embedding API。
 
