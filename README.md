@@ -27,8 +27,10 @@ cp .env.example .env
 **用本地模型（默认 BGE-M3，支持混合搜索）：**
 ```bash
 EMBEDDING_PROVIDER=local
+# 【可选】可指定其他本地模型路径，或保留默认的 BAAI/bge-m3
+EMBEDDING_MODEL=BAAI/bge-m3
 ```
-首次运行自动下载模型（约 2GB），之后离线可用，原生支持 Dense+Sparse 双路召回。
+首次运行自动下载模型（约 2GB），如果指定了本地已经下载好的权重路径，则可实现完全离线加载。原生支持 Dense+Sparse 双路召回。
 
 **用远程 API（硅基流动 / OpenAI / 任意兼容接口）：**
 
