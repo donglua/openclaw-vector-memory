@@ -47,12 +47,16 @@ if grep -q "your-cluster-id" "$ENV_FILE" || grep -q "your_api_key_here" "$ENV_FI
 
     echo "Embedding 提供商可选项: local(本地), remote(远程硅基/OpenAI等)"
     read -p "Embedding Provider [默认 local]: " in_provider
+    in_provider=${in_provider:-local}
 
     if [ "$in_provider" = "remote" ]; then
         read -p "远程 API Base URL [如 https://api.siliconflow.cn/v1]: " in_api_base
+        in_api_base=${in_api_base:-https://api.siliconflow.cn/v1}
         read -p "远程 API Key: " in_api_key
         read -p "模型名称 [默认 BAAI/bge-m3]: " in_model
+        in_model=${in_model:-BAAI/bge-m3}
         read -p "向量维度 [默认 1024]: " in_dim
+        in_dim=${in_dim:-1024}
     fi
 
     # 替换或追加配置到 .env
@@ -63,7 +67,7 @@ if grep -q "your-cluster-id" "$ENV_FILE" || grep -q "your_api_key_here" "$ENV_FI
     if [ "$in_provider" = "remote" ]; then
         # 确保包含远程 API 配置变量
         for var in EMBEDDING_API_BASE EMBEDDING_API_KEY EMBEDDING_MODEL EMBEDDING_DIM; do
-            if ! grep -q "^$var=" "$ENV_FILE" && ! grep -q "^# $var=" "$ENV_FILE"; then
+            if ! grep -q "^$var=" "$ENV_FILE" && ! grep -q "^# *$var=" "$ENV_FILE"; then
                 echo "$var=" >> "$ENV_FILE"
             fi
         done
