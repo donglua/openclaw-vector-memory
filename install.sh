@@ -53,10 +53,13 @@ if grep -q "your-cluster-id" "$ENV_FILE" || grep -q "your_api_key_here" "$ENV_FI
         read -p "远程 API Base URL [如 https://api.siliconflow.cn/v1]: " in_api_base
         in_api_base=${in_api_base:-https://api.siliconflow.cn/v1}
         read -p "远程 API Key: " in_api_key
-        read -p "模型名称 [默认 BAAI/bge-m3]: " in_model
+        read -p "模型名称 [默认 Qwen/Qwen3-Embedding-8B]: " in_model
+        in_model=${in_model:-Qwen/Qwen3-Embedding-8B}
+        read -p "向量维度 [默认 4096]: " in_dim
+        in_dim=${in_dim:-4096}
+    else
+        read -p "本地模型名称或路径 [默认 BAAI/bge-m3]: " in_model
         in_model=${in_model:-BAAI/bge-m3}
-        read -p "向量维度 [默认 1024]: " in_dim
-        in_dim=${in_dim:-1024}
     fi
 
     # 替换或追加配置到 .env
@@ -64,16 +67,20 @@ if grep -q "your-cluster-id" "$ENV_FILE" || grep -q "your_api_key_here" "$ENV_FI
     [ -n "$in_token" ] && sed -i.bak "s|^ZILLIZ_TOKEN=.*|ZILLIZ_TOKEN=$in_token|" "$ENV_FILE"
     [ -n "$in_provider" ] && sed -i.bak "s|^EMBEDDING_PROVIDER=.*|EMBEDDING_PROVIDER=$in_provider|" "$ENV_FILE"
 
+    if ! grep -q "^EMBEDDING_MODEL=" "$ENV_FILE" && ! grep -q "^# *EMBEDDING_MODEL=" "$ENV_FILE"; then
+        echo "EMBEDDING_MODEL=" >> "$ENV_FILE"
+    fi
+    [ -n "$in_model" ] && sed -i.bak "s|^#* *EMBEDDING_MODEL=.*|EMBEDDING_MODEL=$in_model|" "$ENV_FILE"
+
     if [ "$in_provider" = "remote" ]; then
         # 确保包含远程 API 配置变量
-        for var in EMBEDDING_API_BASE EMBEDDING_API_KEY EMBEDDING_MODEL EMBEDDING_DIM; do
+        for var in EMBEDDING_API_BASE EMBEDDING_API_KEY EMBEDDING_DIM; do
             if ! grep -q "^$var=" "$ENV_FILE" && ! grep -q "^# *$var=" "$ENV_FILE"; then
                 echo "$var=" >> "$ENV_FILE"
             fi
         done
         [ -n "$in_api_base" ] && sed -i.bak "s|^#* *EMBEDDING_API_BASE=.*|EMBEDDING_API_BASE=$in_api_base|" "$ENV_FILE"
         [ -n "$in_api_key" ]  && sed -i.bak "s|^#* *EMBEDDING_API_KEY=.*|EMBEDDING_API_KEY=$in_api_key|" "$ENV_FILE"
-        [ -n "$in_model" ]    && sed -i.bak "s|^#* *EMBEDDING_MODEL=.*|EMBEDDING_MODEL=$in_model|" "$ENV_FILE"
         [ -n "$in_dim" ]      && sed -i.bak "s|^#* *EMBEDDING_DIM=.*|EMBEDDING_DIM=$in_dim|" "$ENV_FILE"
     fi
     rm -f "$ENV_FILE.bak"

@@ -18,8 +18,8 @@ def get_dense_dim() -> int:
     provider = os.getenv("EMBEDDING_PROVIDER", "local")
     if provider == "local":
         return 1024  # BGE-M3 dense 维度
-    # 远程 API 由模型决定，默认 1024（BGE-M3），可通过 EMBEDDING_DIM 覆盖
-    return int(os.getenv("EMBEDDING_DIM", "1024"))
+    # 远程 API 由模型决定，默认 4096（Qwen3），可通过 EMBEDDING_DIM 覆盖
+    return int(os.getenv("EMBEDDING_DIM", "4096"))
 
 
 # ─── 本地 BGE-M3（完整 dense + sparse）───────────────────────────
@@ -30,10 +30,11 @@ class _LocalEmbedder:
 
     def _load(self):
         if self._model is None:
-            print("⏳ 加载 BGE-M3 模型（首次约需下载 2GB）...")
+            model_name = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
+            print(f"⏳ 加载 {model_name} 模型（如果是 BGE-M3 首次约需下载 2GB）...")
             from FlagEmbedding import BGEM3FlagModel
-            self._model = BGEM3FlagModel("BAAI/bge-m3", use_fp16=True)
-            print("✅ BGE-M3 加载完成")
+            self._model = BGEM3FlagModel(model_name, use_fp16=True)
+            print(f"✅ {model_name} 加载完成")
 
     def embed(self, text: str):
         self._load()
@@ -54,8 +55,8 @@ class _RemoteEmbedder:
     只需在 .env 中配置：
         EMBEDDING_API_BASE  = https://api.siliconflow.cn/v1   # 或其他服务地址
         EMBEDDING_API_KEY   = sk-xxx
-        EMBEDDING_MODEL     = BAAI/bge-m3                      # 按服务支持的模型填写
-        EMBEDDING_DIM       = 1024                             # 模型输出维度
+        EMBEDDING_MODEL     = Qwen/Qwen3-Embedding-8B          # 按服务支持的模型填写
+        EMBEDDING_DIM       = 4096                             # 模型输出维度
     """
     _client = None
 
@@ -66,7 +67,7 @@ class _RemoteEmbedder:
                 api_key=os.environ["EMBEDDING_API_KEY"],
                 base_url=os.environ["EMBEDDING_API_BASE"],
             )
-            self._model = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
+            self._model = os.getenv("EMBEDDING_MODEL", "Qwen/Qwen3-Embedding-8B")
 
     def embed(self, text: str):
         self._load()

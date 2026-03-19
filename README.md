@@ -43,15 +43,15 @@ COLLECTION_NAME=openclaw_memories
 EMBEDDING_PROVIDER=remote
 EMBEDDING_API_BASE=https://api.siliconflow.cn/v1
 EMBEDDING_API_KEY=sk-xxx
-EMBEDDING_MODEL=BAAI/bge-m3
-EMBEDDING_DIM=1024
+EMBEDDING_MODEL=Qwen/Qwen3-Embedding-8B
+EMBEDDING_DIM=4096
 ```
 
 常见服务配置对照：
 
 | 服务 | `EMBEDDING_API_BASE` | `EMBEDDING_MODEL` | `EMBEDDING_DIM` |
 |------|---------------------|------------------|----------------|
-| 硅基流动 | `https://api.siliconflow.cn/v1` | `BAAI/bge-m3` | `1024` |
+| 硅基流动 | `https://api.siliconflow.cn/v1` | `Qwen/Qwen3-Embedding-8B` | `4096` |
 | OpenAI | `https://api.openai.com/v1` | `text-embedding-3-small` | `1536` |
 | Ollama（本地服务） | `http://localhost:11434/v1` | `nomic-embed-text` | `768` |
 
