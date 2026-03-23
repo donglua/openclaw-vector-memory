@@ -32,6 +32,23 @@ fi
 echo "-> 配置 .env 环境 (交互式)..."
 ENV_FILE="$TARGET_DIR/.env"
 
+escape_sed_value() {
+    printf '%s' "$1" | sed -e 's/[\\/&]/\\&/g'
+}
+
+set_env_var() {
+    local key="$1"
+    local value="$2"
+    local escaped
+    escaped=$(escape_sed_value "$value")
+
+    if grep -qE "^[#[:space:]]*${key}=" "$ENV_FILE"; then
+        sed -i.bak -E "s|^[#[:space:]]*${key}=.*|${key}=${escaped}|" "$ENV_FILE"
+    else
+        printf '%s\n' "${key}=${value}" >> "$ENV_FILE"
+    fi
+}
+
 # 如果没有 .env 文件，先从模板创建
 if [ ! -f "$ENV_FILE" ]; then
     cp "$SCRIPT_DIR/.env.example" "$ENV_FILE"
@@ -48,6 +65,7 @@ if grep -q "your-cluster-id" "$ENV_FILE" || grep -q "your_api_key_here" "$ENV_FI
     echo "Embedding 提供商可选项: local(本地), remote(远程硅基/OpenAI等)"
     read -p "Embedding Provider [默认 local]: " in_provider
     in_provider=${in_provider:-local}
+    in_provider=$(printf '%s' "$in_provider" | tr '[:upper:]' '[:lower:]' | sed -e 's/^[[:space:]]*//; s/[[:space:]]*$//')
 
     if [ "$in_provider" = "remote" ]; then
         read -p "远程 API Base URL [如 https://api.siliconflow.cn/v1]: " in_api_base
@@ -63,25 +81,15 @@ if grep -q "your-cluster-id" "$ENV_FILE" || grep -q "your_api_key_here" "$ENV_FI
     fi
 
     # 替换或追加配置到 .env
-    [ -n "$in_uri" ] && sed -i.bak "s|^ZILLIZ_URI=.*|ZILLIZ_URI=$in_uri|" "$ENV_FILE"
-    [ -n "$in_token" ] && sed -i.bak "s|^ZILLIZ_TOKEN=.*|ZILLIZ_TOKEN=$in_token|" "$ENV_FILE"
-    [ -n "$in_provider" ] && sed -i.bak "s|^EMBEDDING_PROVIDER=.*|EMBEDDING_PROVIDER=$in_provider|" "$ENV_FILE"
-
-    if ! grep -q "^EMBEDDING_MODEL=" "$ENV_FILE" && ! grep -q "^# *EMBEDDING_MODEL=" "$ENV_FILE"; then
-        echo "EMBEDDING_MODEL=" >> "$ENV_FILE"
-    fi
-    [ -n "$in_model" ] && sed -i.bak "s|^#* *EMBEDDING_MODEL=.*|EMBEDDING_MODEL=$in_model|" "$ENV_FILE"
+    [ -n "$in_uri" ] && set_env_var "ZILLIZ_URI" "$in_uri"
+    [ -n "$in_token" ] && set_env_var "ZILLIZ_TOKEN" "$in_token"
+    [ -n "$in_provider" ] && set_env_var "EMBEDDING_PROVIDER" "$in_provider"
+    [ -n "$in_model" ] && set_env_var "EMBEDDING_MODEL" "$in_model"
 
     if [ "$in_provider" = "remote" ]; then
-        # 确保包含远程 API 配置变量
-        for var in EMBEDDING_API_BASE EMBEDDING_API_KEY EMBEDDING_DIM; do
-            if ! grep -q "^$var=" "$ENV_FILE" && ! grep -q "^# *$var=" "$ENV_FILE"; then
-                echo "$var=" >> "$ENV_FILE"
-            fi
-        done
-        [ -n "$in_api_base" ] && sed -i.bak "s|^#* *EMBEDDING_API_BASE=.*|EMBEDDING_API_BASE=$in_api_base|" "$ENV_FILE"
-        [ -n "$in_api_key" ]  && sed -i.bak "s|^#* *EMBEDDING_API_KEY=.*|EMBEDDING_API_KEY=$in_api_key|" "$ENV_FILE"
-        [ -n "$in_dim" ]      && sed -i.bak "s|^#* *EMBEDDING_DIM=.*|EMBEDDING_DIM=$in_dim|" "$ENV_FILE"
+        [ -n "$in_api_base" ] && set_env_var "EMBEDDING_API_BASE" "$in_api_base"
+        [ -n "$in_api_key" ]  && set_env_var "EMBEDDING_API_KEY" "$in_api_key"
+        [ -n "$in_dim" ]      && set_env_var "EMBEDDING_DIM" "$in_dim"
     fi
     rm -f "$ENV_FILE.bak"
     echo "✅ 环境变量已自动配置到 $ENV_FILE！"
