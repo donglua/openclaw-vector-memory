@@ -134,7 +134,15 @@ echo "-> 正在注入 Agent 记忆指令..."
 AGENTS_FILE="$TARGET_DIR/AGENTS.md"
 if [ -f "$AGENTS_FILE" ]; then
     if grep -q "长期向量记忆库" "$AGENTS_FILE"; then
-        echo "⚠️ AGENTS.md 似乎已包含向量记忆工具的指令，跳过注入。"
+        echo "⚠️ AGENTS.md 似乎已包含向量记忆工具的指令，检查并修复旧版命令..."
+        # 将旧版 Python 脚本的调用替换为 Go 编译后的二进制
+        if grep -q "python3 vector_memory.py" "$AGENTS_FILE"; then
+            sed -i.bak "s/python3 vector_memory.py/.\/vector-memory/g" "$AGENTS_FILE"
+            rm -f "$AGENTS_FILE.bak"
+            echo "✅ 已自动更新 AGENTS.md 中的命令为 ./vector-memory"
+        else
+            echo "✅ AGENTS.md 中的指令已是最新。"
+        fi
     else
         cat << 'EOF' >> "$AGENTS_FILE"
 
