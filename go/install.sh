@@ -74,7 +74,7 @@ echo "-> 配置 .env 环境 (交互式)..."
 ENV_FILE="$TARGET_DIR/.env"
 
 escape_sed_value() {
-    printf '%s' "$1" | sed -e 's/[\\\/&]/\\&/g'
+    printf '%s' "$1" | sed -e 's/[\\/&|]/\\&/g'
 }
 
 set_env_var() {
