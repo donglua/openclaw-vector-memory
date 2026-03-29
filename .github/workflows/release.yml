@@ -36,10 +36,9 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go/go.mod
+          go-version-file: go.mod
 
       - name: Build
-        working-directory: go
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
@@ -49,7 +48,7 @@ jobs:
           BUILD_TIME=$(date -u +%Y%m%d%H%M%S)
           go build -trimpath \
             -ldflags "-s -w -X main.version=${VERSION} -X main.buildTime=${BUILD_TIME}" \
-            -o ../vector-memory-${{ matrix.suffix }}${{ matrix.ext }} \
+            -o vector-memory-${{ matrix.suffix }}${{ matrix.ext }} \
             ./cmd/vector-memory/
 
       - uses: actions/upload-artifact@v4
