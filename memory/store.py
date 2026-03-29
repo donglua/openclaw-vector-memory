@@ -19,7 +19,7 @@ from pymilvus import (
 from .embedder import Embedder, get_dense_dim
 from .rerank_config import RerankConfig
 from .rerank_policy import should_rerank, merge_reranked_candidates
-from .reranker import LLMReranker
+from .reranker import LLMReranker, APIReranker
 
 load_dotenv()
 
@@ -40,12 +40,20 @@ class MemoryStore:
         self._client: MilvusClient | None = None
         self._rerank_config = RerankConfig.from_env()
         self._reranker = None
-        if self._rerank_config.enabled and self._rerank_config.provider == "llm":
-            self._reranker = LLMReranker(
-                client=None,
-                model=self._rerank_config.model,
-                timeout_ms=self._rerank_config.timeout_ms,
-            )
+        if self._rerank_config.enabled:
+            if self._rerank_config.provider == "reranker":
+                self._reranker = APIReranker(
+                    api_base=self._rerank_config.api_base,
+                    api_key=self._rerank_config.api_key,
+                    model=self._rerank_config.model,
+                    timeout_ms=self._rerank_config.timeout_ms,
+                )
+            elif self._rerank_config.provider == "llm":
+                self._reranker = LLMReranker(
+                    client=None,
+                    model=self._rerank_config.model,
+                    timeout_ms=self._rerank_config.timeout_ms,
+                )
         self._connect()
 
     def _connect(self):

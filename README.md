@@ -70,10 +70,12 @@ EMBEDDING_DIM=4096
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
 | `RERANK_ENABLED` | `true` | 是否启用 rerank |
-| `RERANK_PROVIDER` | `llm` | 重排后端（目前仅支持 `llm`） |
-| `RERANK_MODEL` | `gpt-4o-mini` | LLM 模型 |
+| `RERANK_PROVIDER` | `reranker` | `reranker`（专用 API，推荐）或 `llm`（通用 Chat Completion） |
+| `RERANK_MODEL` | `BAAI/bge-reranker-v2-m3` | Reranker 模型 |
+| `RERANK_API_BASE` | 复用 `EMBEDDING_API_BASE` | Reranker API 地址 |
+| `RERANK_API_KEY` | 复用 `EMBEDDING_API_KEY` | Reranker API 密钥 |
 | `RERANK_FETCH_K` | `40` | 第一阶段 Dense 召回数量 |
-| `RERANK_TIMEOUT_MS` | `8000` | LLM 调用超时（毫秒） |
+| `RERANK_TIMEOUT_MS` | `8000` | API 调用超时（毫秒） |
 | `RERANK_FLAT_GAP_THRESHOLD` | `0.03` | Top1-TopK 差值阈值，低于此触发重排 |
 | `RERANK_LOW_CONF_THRESHOLD` | `0.45` | Top1 低于此值触发重排 |
 | `RERANK_MIN_CANDIDATES` | `8` | 最少候选数，不足则跳过重排 |

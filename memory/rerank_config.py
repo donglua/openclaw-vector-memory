@@ -15,8 +15,10 @@ def _to_bool(value: str | None, default: bool) -> bool:
 @dataclass
 class RerankConfig:
     enabled: bool
-    provider: str
+    provider: str  # "reranker"（专用 Reranker API）或 "llm"（通用 Chat Completion）
     model: str
+    api_base: str
+    api_key: str
     fetch_k: int
     timeout_ms: int
     flat_gap_threshold: float
@@ -29,8 +31,10 @@ class RerankConfig:
     def from_env(cls) -> "RerankConfig":
         return cls(
             enabled=_to_bool(os.getenv("RERANK_ENABLED"), True),
-            provider=os.getenv("RERANK_PROVIDER", "llm"),
-            model=os.getenv("RERANK_MODEL", "gpt-4o-mini"),
+            provider=os.getenv("RERANK_PROVIDER", "reranker"),
+            model=os.getenv("RERANK_MODEL", "BAAI/bge-reranker-v2-m3"),
+            api_base=os.getenv("RERANK_API_BASE", os.getenv("EMBEDDING_API_BASE", "")),
+            api_key=os.getenv("RERANK_API_KEY", os.getenv("EMBEDDING_API_KEY", "")),
             fetch_k=int(os.getenv("RERANK_FETCH_K", "40")),
             timeout_ms=int(os.getenv("RERANK_TIMEOUT_MS", "8000")),
             flat_gap_threshold=float(os.getenv("RERANK_FLAT_GAP_THRESHOLD", "0.03")),

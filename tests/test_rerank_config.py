@@ -11,7 +11,7 @@ class TestRerankConfig(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=True):
             cfg = RerankConfig.from_env()
         self.assertTrue(cfg.enabled)
-        self.assertEqual(cfg.provider, "llm")
+        self.assertEqual(cfg.provider, "reranker")
         self.assertEqual(cfg.fetch_k, 40)
         self.assertEqual(cfg.timeout_ms, 8000)
         self.assertEqual(cfg.flat_gap_threshold, 0.03)
