@@ -17,6 +17,9 @@ from pymilvus import (
     RRFRanker,
 )
 from .embedder import Embedder, get_dense_dim
+from .rerank_config import RerankConfig
+from .rerank_policy import should_rerank, merge_reranked_candidates
+from .reranker import LLMReranker
 
 load_dotenv()
 
@@ -35,6 +38,14 @@ class MemoryStore:
         self._col = collection_name or os.getenv("COLLECTION_NAME", "openclaw_memories")
         self._embedder = Embedder()
         self._client: MilvusClient | None = None
+        self._rerank_config = RerankConfig.from_env()
+        self._reranker = None
+        if self._rerank_config.enabled and self._rerank_config.provider == "llm":
+            self._reranker = LLMReranker(
+                client=None,
+                model=self._rerank_config.model,
+                timeout_ms=self._rerank_config.timeout_ms,
+            )
         self._connect()
 
     def _connect(self):
@@ -45,6 +56,11 @@ class MemoryStore:
             print(f"✅ 已创建 Collection：{self._col}")
         else:
             print(f"✅ 已连接 Collection：{self._col}")
+
+    def _debug(self, message: str) -> None:
+        """rerank 调试日志"""
+        if self._rerank_config.debug:
+            print(f"[rerank-debug] {message}")
 
     def _create_collection(self):
         """创建双向量 Collection（dense + sparse）"""
@@ -143,13 +159,13 @@ class MemoryStore:
                 output_fields=["text", "source", "created_at"],
             )
             hits_raw = results[0]
-        else:  # 无 sparse → 纯 dense 搜索
+        else:  # 无 sparse → 纯 dense 搜索（remote 模式走这里）
             results = self._client.search(
                 collection_name=self._col,
                 data=[dense_q],
                 anns_field="dense_vector",
                 search_params={"metric_type": "COSINE", "nprobe": 10},
-                limit=top_k,
+                limit=max(top_k, self._rerank_config.fetch_k),
                 output_fields=["text", "source", "created_at"],
             )
             hits_raw = results[0]
@@ -161,7 +177,38 @@ class MemoryStore:
                 "source": r["entity"].get("source", ""),
                 "score": round(r["distance"], 4),
             })
-        return hits
+
+        # 混合搜索路径不做 rerank，直接返回
+        if sparse_q:
+            return hits[:top_k]
+
+        # ── Remote 路径：条件触发 LLM Rerank ──
+        if not self._rerank_config.enabled or not self._reranker:
+            return hits[:top_k]
+
+        scores = [h["score"] for h in hits]
+        do_rerank, reason = should_rerank(
+            scores=scores,
+            top_k=top_k,
+            min_candidates=self._rerank_config.min_candidates,
+            flat_gap_threshold=self._rerank_config.flat_gap_threshold,
+            low_conf_threshold=self._rerank_config.low_conf_threshold,
+            force=self._rerank_config.force,
+        )
+        self._debug(f"should={do_rerank}, reason={reason}, candidates={len(hits)}")
+        if not do_rerank:
+            return hits[:top_k]
+
+        try:
+            reranked_indices = self._reranker.rerank(query=query, candidates=hits)
+            return merge_reranked_candidates(
+                candidates=hits,
+                reranked_indices=reranked_indices,
+                top_k=top_k,
+            )
+        except Exception as exc:
+            self._debug(f"rerank fallback due to: {exc}")
+            return hits[:top_k]
 
     def build_prompt_context(self, query: str, top_k: int = 5) -> str:
         """

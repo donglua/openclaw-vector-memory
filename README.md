@@ -59,6 +59,27 @@ EMBEDDING_DIM=4096
 
 > 远程 API 仅返回 Dense 向量，自动降级为语义搜索（无 Sparse），对个人记忆场景影响不大。
 
+### Remote 检索增强（可选 LLM Rerank）
+
+当 `EMBEDDING_PROVIDER=remote` 时，系统会先做 Dense 召回，再根据置信度条件决定是否触发 LLM 重排：
+
+- **平坦分布**或**低置信结果**可触发重排，提升 Top-K 相关性。
+- 若重排超时或失败，**自动降级**为原始 Dense 排序，不影响可用性。
+- 可通过 `.env` 中 `RERANK_*` 参数调优效果与延迟。
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `RERANK_ENABLED` | `true` | 是否启用 rerank |
+| `RERANK_PROVIDER` | `llm` | 重排后端（目前仅支持 `llm`） |
+| `RERANK_MODEL` | `gpt-4o-mini` | LLM 模型 |
+| `RERANK_FETCH_K` | `40` | 第一阶段 Dense 召回数量 |
+| `RERANK_TIMEOUT_MS` | `8000` | LLM 调用超时（毫秒） |
+| `RERANK_FLAT_GAP_THRESHOLD` | `0.03` | Top1-TopK 差值阈值，低于此触发重排 |
+| `RERANK_LOW_CONF_THRESHOLD` | `0.45` | Top1 低于此值触发重排 |
+| `RERANK_MIN_CANDIDATES` | `8` | 最少候选数，不足则跳过重排 |
+| `RERANK_FORCE` | `false` | 强制总是触发重排 |
+| `RERANK_DEBUG` | `false` | 打印重排调试日志 |
+
 ### 3. 测试
 
 ```bash
