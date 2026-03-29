@@ -1,3 +1,5 @@
 /vector-memory
 /vector-memory-*
 *.exe
+.env
+MEMORY_backup.md
