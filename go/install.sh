@@ -23,22 +23,48 @@ echo "🚀 开始安装 openclaw-vector-memory (Go 版) 到 $TARGET_DIR..."
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 BIN_NAME="vector-memory"
 
-# ── 1. 编译或复制二进制 ──────────────────────────────────────
+# ── 1. 编译或复制或下载二进制 ──────────────────────────────────────
 
-# 检查是否有预编译的二进制
+# 获取系统信息
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+case "$ARCH" in
+    x86_64) ARCH="amd64" ;;
+    aarch64|arm64) ARCH="arm64" ;;
+esac
+ASSET_NAME="vector-memory-${OS}-${ARCH}"
+
+# 检查是否有预编译的二进制 (本地开发)
 if [ -f "$SCRIPT_DIR/$BIN_NAME" ]; then
-    echo "-> 复制预编译二进制..."
+    echo "-> 复制本地预编译二进制..."
     cp "$SCRIPT_DIR/$BIN_NAME" "$TARGET_DIR/$BIN_NAME"
-elif command -v go &> /dev/null; then
+# 有 Go 环境则编译 (源码环境)
+elif command -v go &> /dev/null && [ -d "$SCRIPT_DIR/cmd" ]; then
     echo "-> 从源码编译..."
     cd "$SCRIPT_DIR"
     go build -o "$TARGET_DIR/$BIN_NAME" ./cmd/vector-memory/
+# 从 GitHub Release 下载
 else
-    echo "❌ 未找到预编译二进制，也没有 Go 编译器。请：" 
-    echo "   1. 从 Release 页面下载预编译二进制，或"
-    echo "   2. 安装 Go (https://go.dev/dl) 后重试"
-    exit 1
+    echo "-> 正在从 GitHub Releases 下载预编译二进制 ($ASSET_NAME)..."
+    DOWNLOAD_URL="https://github.com/donglua/openclaw-vector-memory/releases/latest/download/$ASSET_NAME"
+    
+    if command -v curl &> /dev/null; then
+        curl -L -o "$TARGET_DIR/$BIN_NAME" "$DOWNLOAD_URL"
+    elif command -v wget &> /dev/null; then
+        wget -O "$TARGET_DIR/$BIN_NAME" "$DOWNLOAD_URL"
+    else
+        echo "❌ 错误: 找不到 curl 或 wget 工具，无法下载。"
+        exit 1
+    fi
+    
+    # 验证文件是否下载成功（而不是 404 页面）
+    if [ ! -s "$TARGET_DIR/$BIN_NAME" ] || head -n 1 "$TARGET_DIR/$BIN_NAME" | grep -q 'Not Found'; then
+        echo "❌ 错误: 下载失败，可能是平台不支持 ($ASSET_NAME)。请参阅 README 手动下载或编译。"
+        rm -f "$TARGET_DIR/$BIN_NAME"
+        exit 1
+    fi
 fi
+
 chmod +x "$TARGET_DIR/$BIN_NAME"
 echo "✅ 二进制已安装到 $TARGET_DIR/$BIN_NAME"
 
