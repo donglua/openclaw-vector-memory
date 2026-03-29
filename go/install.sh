@@ -96,8 +96,25 @@ if [ ! -f "$ENV_FILE" ]; then
     echo "✅ 创建了新的 .env 文件"
 fi
 
+# 检查是否需要交互式配置
+missing_config=0
+if [ ! -f "$ENV_FILE" ]; then
+    missing_config=1
+else
+    # 检查核心项是否已存在且不为占位符
+    if ! grep -qE '^[#[:space:]]*ZILLIZ_URI=.*' "$ENV_FILE" || grep -qE '^[#[:space:]]*ZILLIZ_URI=.*your-cluster-id' "$ENV_FILE" 2>/dev/null; then
+        missing_config=1
+    fi
+    if ! grep -qE '^[#[:space:]]*ZILLIZ_TOKEN=.*' "$ENV_FILE" || grep -qE '^[#[:space:]]*ZILLIZ_TOKEN=.*your_api_key_here' "$ENV_FILE" 2>/dev/null; then
+        missing_config=1
+    fi
+    if ! grep -qE '^[#[:space:]]*EMBEDDING_API_KEY=.*' "$ENV_FILE" || grep -qE '^[#[:space:]]*EMBEDDING_API_KEY=.*your_api_key_here' "$ENV_FILE" 2>/dev/null; then
+        missing_config=1
+    fi
+fi
+
 # 交互式填入
-if grep -q "your-cluster-id" "$ENV_FILE" 2>/dev/null || grep -q "your_api_key_here" "$ENV_FILE" 2>/dev/null || [ ! -f "$ENV_FILE" ]; then
+if [ "$missing_config" -eq 1 ]; then
     # 确保 .env 存在
     touch "$ENV_FILE"
     
