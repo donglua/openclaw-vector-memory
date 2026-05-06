@@ -26,7 +26,7 @@ func NewClient(uri, token string) *Client {
 	return &Client{
 		baseURL: baseURL,
 		token:   token,
-		client:  &http.Client{Timeout: 30 * time.Second},
+		client:  &http.Client{Timeout: 120 * time.Second},
 	}
 }
 
@@ -96,10 +96,10 @@ func (c *Client) CreateCollection(name string, denseDim int) error {
 		"enableDynamicField": true,
 		"fields": []map[string]interface{}{
 			{
-				"fieldName":  "id",
-				"dataType":   "Int64",
-				"isPrimary":  true,
-				"autoID":     true,
+				"fieldName": "id",
+				"dataType":  "Int64",
+				"isPrimary": true,
+				"autoID":    true,
 			},
 			{
 				"fieldName": "dense_vector",
@@ -109,15 +109,15 @@ func (c *Client) CreateCollection(name string, denseDim int) error {
 				},
 			},
 			{
-				"fieldName":  "text",
-				"dataType":   "VarChar",
+				"fieldName": "text",
+				"dataType":  "VarChar",
 				"elementTypeParams": map[string]interface{}{
 					"max_length": 4096,
 				},
 			},
 			{
-				"fieldName":  "source",
-				"dataType":   "VarChar",
+				"fieldName": "source",
+				"dataType":  "VarChar",
 				"elementTypeParams": map[string]interface{}{
 					"max_length": 256,
 				},
@@ -204,29 +204,67 @@ func (c *Client) Search(collection string, vector []float32, topK int) ([]Search
 		return nil, err
 	}
 
-	// 响应格式：二维数组 [[{id, distance, entity: {text, source}}]]
-	var rawResults [][]struct {
-		Distance float64 `json:"distance"`
-		Entity   struct {
-			Text   string `json:"text"`
-			Source string `json:"source"`
-		} `json:"entity"`
-	}
-	if err := json.Unmarshal(data, &rawResults); err != nil {
+	hits, err := parseSearchHits(data)
+	if err != nil {
 		return nil, fmt.Errorf("解析搜索结果失败: %w", err)
 	}
+	return hits, nil
+}
 
-	var hits []SearchHit
-	if len(rawResults) > 0 {
-		for _, r := range rawResults[0] {
-			hits = append(hits, SearchHit{
-				Text:   r.Entity.Text,
-				Source: r.Entity.Source,
-				Score:  r.Distance,
-			})
+type rawSearchHit struct {
+	Distance float64 `json:"distance"`
+	Text     string  `json:"text"`
+	Source   string  `json:"source"`
+	Entity   struct {
+		Text   string `json:"text"`
+		Source string `json:"source"`
+	} `json:"entity"`
+}
+
+func parseSearchHits(data json.RawMessage) ([]SearchHit, error) {
+	var flatResults []rawSearchHit
+	if err := json.Unmarshal(data, &flatResults); err == nil {
+		return flattenSearchResults(flatResults), nil
+	}
+
+	var nestedResults [][]rawSearchHit
+	if err := json.Unmarshal(data, &nestedResults); err == nil {
+		if len(nestedResults) == 0 {
+			return nil, nil
+		}
+		return flattenSearchResults(nestedResults[0]), nil
+	}
+
+	var wrappedResults map[string]json.RawMessage
+	if err := json.Unmarshal(data, &wrappedResults); err != nil {
+		return nil, err
+	}
+	for _, key := range []string{"result", "results", "data"} {
+		if raw, ok := wrappedResults[key]; ok {
+			return parseSearchHits(raw)
 		}
 	}
-	return hits, nil
+	return nil, fmt.Errorf("未知搜索结果结构")
+}
+
+func flattenSearchResults(rawResults []rawSearchHit) []SearchHit {
+	var hits []SearchHit
+	for _, r := range rawResults {
+		text := r.Text
+		source := r.Source
+		if text == "" {
+			text = r.Entity.Text
+		}
+		if source == "" {
+			source = r.Entity.Source
+		}
+		hits = append(hits, SearchHit{
+			Text:   text,
+			Source: source,
+			Score:  r.Distance,
+		})
+	}
+	return hits
 }
 
 // ── 统计操作 ─────────────────────────────────────────────────

@@ -23,9 +23,12 @@ func main() {
 	saveText := flag.String("save", "", "写入一条记忆")
 	searchQuery := flag.String("search", "", "语义搜索记忆")
 	migratePath := flag.String("migrate", "", "从 Markdown 文件迁移记忆")
+	migrateUsefulPath := flag.String("migrate-useful", "", "仅迁移高价值 Markdown 记忆")
 	doCount := flag.Bool("count", false, "查看记忆总条数")
 	doTest := flag.Bool("test", false, "运行端到端测试")
 	topK := flag.Int("top-k", 5, "搜索返回条数")
+	migrateStart := flag.Int("migrate-start", 0, "迁移起始 chunk 序号，用于失败后续跑")
+	dryRun := flag.Bool("dry-run", false, "预览迁移结果但不写入")
 
 	flag.Parse()
 
@@ -38,6 +41,9 @@ func main() {
 		n++
 	}
 	if *migratePath != "" {
+		n++
+	}
+	if *migrateUsefulPath != "" {
 		n++
 	}
 	if *doCount {
@@ -64,7 +70,9 @@ func main() {
 	case *searchQuery != "":
 		cmdSearch(*searchQuery, *topK)
 	case *migratePath != "":
-		cmdMigrate(*migratePath)
+		cmdMigrate(*migratePath, *migrateStart)
+	case *migrateUsefulPath != "":
+		cmdMigrateUseful(*migrateUsefulPath, *migrateStart, *dryRun)
 	case *doCount:
 		cmdCount()
 	case *doTest:
@@ -108,11 +116,20 @@ func cmdSearch(query string, topK int) {
 	}
 }
 
-func cmdMigrate(mdPath string) {
+func cmdMigrate(mdPath string, start int) {
 	s := getStore()
-	_, err := migrate.MigrateMarkdown(mdPath, s, 32)
+	_, err := migrate.MigrateMarkdownFrom(mdPath, s, 32, start)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "❌ 迁移失败: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func cmdMigrateUseful(mdPath string, start int, dryRun bool) {
+	s := getStore()
+	_, err := migrate.MigrateUsefulMarkdown(mdPath, s, 32, start, dryRun)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "❌ 精选迁移失败: %v\n", err)
 		os.Exit(1)
 	}
 }

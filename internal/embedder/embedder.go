@@ -37,7 +37,7 @@ func New() (*Embedder, error) {
 		apiKey:  apiKey,
 		model:   config.Env("EMBEDDING_MODEL", "Qwen/Qwen3-Embedding-8B"),
 		dim:     config.EnvInt("EMBEDDING_DIM", 4096),
-		client:  &http.Client{Timeout: 30 * time.Second},
+		client:  &http.Client{Timeout: 120 * time.Second},
 	}, nil
 }
 
